@@ -74,14 +74,15 @@ public:
   void Display(int digit) {
     int seg_np;
     uint8_t dr, dg, db;
-
-    // any digit over 9 results in '-'
+    uint8_t segment;
+    
     digit = (digit > 9) ? 10 : digit;
     
     for (int seg=0; seg<7; seg++) {
+      segment = 1 << seg;
       seg_np = start+(seg*3);
-
-      if (digits[digit][seg])
+      
+      if (digits[digit] & segment)
         dr = red, dg = green, db = blue;
       else
         dr = dg = db = 0;
@@ -102,20 +103,19 @@ private:
   uint16_t max_pixel;
   uint8_t red, green, blue;
 
-  const uint8_t digits[11][7] = {
-    { 1, 1, 1, 1, 1, 1, 0 },  // 0
-    { 0, 0, 1, 1, 0, 0, 0 },  // 1
-    { 0, 1, 1, 0, 1, 1, 1 },  // 2
-    { 0, 1, 1, 1, 1, 0, 1 },  // 3
-    { 1, 0, 1, 1, 0, 0, 1 },  // 4
-    { 1, 1, 0, 1, 1, 0 ,1 },  // 5
-    { 1, 1, 0, 1, 1, 1, 1 },  // 6
-    { 0, 1, 1, 1, 0, 0, 0 },  // 7
-    { 1, 1, 1, 1, 1, 1, 1 },  // 8
-    { 1, 1, 1, 1, 1, 0, 1 },  // 9
-    { 0, 0, 0, 0, 0, 0, 1 }   // - (10)
+  const uint8_t digits[11] = {
+    0b00111111, // 0
+    0b00001100, // 1
+    0b01110110, // 2
+    0b01011110, // 3
+    0b01001101, // 4
+    0b01011011, // 5
+    0b01111011, // 6
+    0b00001110, // 7
+    0b01111111, // 8
+    0b01011111, // 9
+    0b01000000, // '-' DASH
   };
-  const int a=0, b=1, c=2, d=3, e=4, f=5, g=6;
 };
 
 
@@ -150,7 +150,7 @@ public:
   uint8_t red, green, blue;
 };
 
-enum PiezoSound {loud=129, quiet=10, off=0};
+enum PiezoSound {loud=129, quiet=1, off=0};
 static void Piezo(int vol)
 {
   analogWrite(PIEZO_PIN, vol);
