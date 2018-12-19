@@ -214,9 +214,14 @@ public:
     int t = num / 10;
     int u = num % 10;
 
-    d[ssTens].Display(t);
+    if (t || leading_zero) {
+      d[ssTens].Display(t);
+      led7s.writeDigitNum(a7sTens, t);
+    } else {
+      d[ssTens].Off();
+      led7s.writeDigitRaw(a7sTens, 0);
+    }
     d[ssUnits].Display(u);
-    led7s.writeDigitNum(a7sTens, t);
     led7s.writeDigitNum(a7sUnits, u);
     led7s.writeDisplay();
   }
@@ -345,7 +350,8 @@ void setup() {
 
   countdown_to_clock = 0;
   waiting_for_clock = false;
-  
+
+  left.DisplayLeadingZero(false);
   left.Display(tn.hour());
   right.Display(tn.minute());
 
