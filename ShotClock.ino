@@ -118,6 +118,7 @@ private:
   };
 };
 
+#define DASH 10
 
 class Colon {
 public:
@@ -149,6 +150,8 @@ public:
   uint16_t last;
   uint8_t red, green, blue;
 };
+
+
 
 enum PiezoSound {loud=129, quiet=1, off=0};
 static void Piezo(int vol)
@@ -191,6 +194,61 @@ SevenSegment d[4] = {
   SevenSegment(np7s, 65)
 };
 
+// Access globals for low memory use - Yuck!
+class TwoDigits {
+public:
+  TwoDigits(
+        uint8_t pSsTens,
+        uint8_t pSsUnits,
+        uint8_t pA7sTens,
+        uint8_t pA7sUnits
+        )
+    :   ssTens(pSsTens), 
+        ssUnits(pSsUnits), 
+        a7sTens(pA7sTens), 
+        a7sUnits(pA7sUnits) {
+    leading_zero = true;
+    }
+
+  void Display(int num) {
+    int t = num / 10;
+    int u = num % 10;
+
+    d[ssTens].Display(t);
+    d[ssUnits].Display(u);
+    led7s.writeDigitNum(a7sTens, t);
+    led7s.writeDigitNum(a7sUnits, u);
+    led7s.writeDisplay();
+  }
+
+  void Off() {
+    d[ssTens].Off();
+    d[ssTens].Off();
+    led7s.writeDigitRaw(a7sTens, 0);
+    led7s.writeDigitRaw(a7sUnits, 0);
+    led7s.writeDisplay();
+  }
+
+  void Dash() {
+    d[ssTens].Display(DASH);
+    d[ssUnits].Display(DASH);
+    led7s.writeDigitRaw(a7sTens, 0x40);
+    led7s.writeDigitRaw(a7sUnits, 0x40);
+    led7s.writeDisplay();
+   }
+
+   void DisplayLeadingZero(bool display_it) {
+    leading_zero = display_it;
+   }
+
+private:
+    uint8_t ssUnits, ssTens, a7sTens, a7sUnits;
+    bool    leading_zero;
+};
+
+TwoDigits left = TwoDigits(0, 1, 0, 1);
+TwoDigits right = TwoDigits(2, 3, 3, 4);
+
 Colon colon = Colon(np7s, 42);
 
 DateTime tn;      /* Time now - read from RTC */
@@ -198,53 +256,6 @@ DateTime tt;      /* Time then - for comparison */
 
 bool blinkColon;
 
-/* The two digits to the left (hours on a clock */
-static void display_left(int value, bool on=true)
-{
-  if (on) {
-    int tens = (value/10);
-    int units = value % 10;
-  
-    d[0].Display(tens);
-    d[1].Display(units);
-
-    led7s.writeDigitNum(0, tens, false);
-    led7s.writeDigitNum(1, units, false);
-    led7s.writeDisplay();
-  }
-  else
-  {
-    d[0].Off();
-    d[1].Off();
-    led7s.writeDigitNum(0, 18, false);
-    led7s.writeDigitNum(1, 18, false);
-    led7s.writeDisplay();
-  }
-}
-
-/* The two digits to the right (seconds on a clock */
-static void display_right(int value, bool on=true)
-{
-  if (on) {
-    int tens = (value/10);
-    int units = value % 10;
-  
-    d[2].Display(tens);
-    d[3].Display(units);
-
-    led7s.writeDigitNum(3, tens, false);
-    led7s.writeDigitNum(4, units, false);
-    led7s.writeDisplay();
-  }
-  else
-  {
-    d[2].Off();
-    d[3].Off();
-    led7s.writeDigitNum(3, 17, false);
-    led7s.writeDigitNum(4, 17, false);
-    led7s.writeDisplay();
-  }
-}
 
 static void clear_displays(void) {
   for (int idx=0; idx<4; idx++) d[idx].Off();
@@ -335,8 +346,8 @@ void setup() {
   countdown_to_clock = 0;
   waiting_for_clock = false;
   
-  display_left(tn.hour());
-  display_right(tn.minute());
+  left.Display(tn.hour());
+  right.Display(tn.minute());
 
   blinkColon = false;
   colon.Display(blinkColon);
@@ -399,9 +410,9 @@ void loop() {
         waiting_for_clock = false;
         d[0].SetColor(255, 0, 0);
         d[1].SetColor(255, 0, 0);
-        display_left(sc);
+        left.Display(sc);
       } else {
-        display_left(0, false);
+        left.Dash();
       }
     } else if (action == to_reset && !to_running) {
        to = (to) ? timeout_off : timeout_60;
@@ -414,10 +425,10 @@ void loop() {
         to_countdown = 60000;
         d[2].SetColor(0, 0, 255);
         d[3].SetColor(0, 0, 255);
-        display_right(to);
+        right.Display(to);
       } else {
         to_countdown = 0;
-        display_right(0, false);
+        right.Dash();
       }
     }
   } else if (action == sc_start_stop && sc_countdown) {
@@ -442,7 +453,7 @@ void loop() {
         int sc_now;
         sc_now = sc_countdown/1000;
         if (sc_now != sc_last) {
-          display_left(sc_now);
+          left.Display(sc_now);
           sc_last = sc_now;
         }
       }
@@ -463,7 +474,7 @@ void loop() {
         int to_now;
         to_now = to_countdown/1000;
         if (to_now != to_last) {
-          display_right(to_now);
+          right.Display(to_now);
           to_last = to_now;
         }
       }
@@ -488,8 +499,8 @@ void loop() {
         for(int i=0; i<4; i++) d[i].SetColor(0, 128, 128);
         colon.SetColor(0, 128, 128);
         
-        display_left(tn.hour());
-        display_right(tn.minute());
+        left.Display(tn.hour());
+        right.Display(tn.minute());
 
         blinkColon = false;
         colon.Display(blinkColon);
@@ -516,8 +527,8 @@ void loop() {
     }
     
     if (tt.minute() != tn.minute()) {
-      display_left(tn.hour());
-      display_right(tn.minute());
+      left.Display(tn.hour());
+      right.Display(tn.minute());
     }
   }
 
